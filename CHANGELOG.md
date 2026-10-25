@@ -74,3 +74,117 @@
 - Blog with Nuxt Content v3
 - Store with cart and Stripe checkout
 - Unit tests with Vitest
+
+## [0.1.0] - 2026-10-25
+
+Highlights: feat: replace the CV with a corporate services site, plus 2 more changes.
+
+- 🔹 ]7;file://localhost/home/senseikatana/Proyectos/nuxt/senseikatana-webbun add v1.4.4 (38afee6c8) `01eed7b`
+  - `.husky/pre-commit`
+  - `bun.lock`
+  - `package.json`
+- 🚀 feat: replace the CV with a corporate services site `5c432d4`
+  - `app/composables/useDateRange.ts`
+  - `app/layouts/default.vue`
+  - `app/pages/about.vue`
+  - `app/pages/contact.vue`
+  - `app/pages/index.vue`
+  - `app/pages/services/[slug].vue`
+  - `app/pages/services/index.vue`
+  - `app/pages/works/[slug].vue`
+  - `app/pages/works/index.vue`
+  - `content.config.ts`
+  - `content/projects/TODO-caso-de-estudio.md`
+  - `content/resume/ca.json`
+  - `content/resume/en.json`
+  - `content/resume/es.json`
+  - `content/services/TODO-contenido-y-marca.md`
+  - `content/services/TODO-ia-y-automatizacion.md`
+  - `content/services/TODO-seo-y-crecimiento.md`
+  - `content/services/TODO-web-y-ecommerce.md`
+  - `content/services/herramientas-internas.md`
+  - `content/services/integraciones-y-automatizacion.md`
+  - `content/services/rendimiento-y-seo.md`
+  - `content/services/web-y-ecommerce.md`
+  - `content/works/empresaplana.md`
+  - `content/works/erp-lite.md`
+  - `content/works/pos-system.md`
+  - `data/site.ts`
+  - `i18n/locales/ca.json`
+  - `i18n/locales/en.json`
+  - `i18n/locales/es.json`
+  - `nuxt.config.ts`
+  - `tests/content.test.ts`
+  - `tests/dateRange.test.ts`
+- 🧹 chore: baseline before corporate site conversion `e58a84b`
+  - `.atl/.skill-registry.cache.json`
+  - `.atl/skill-registry.md`
+  - `.env.example`
+  - `.gitignore`
+  - `AGENTS.md`
+  - `DESIGN.md`
+  - `README.md`
+  - `app.vue`
+  - `app/app.config.ts`
+  - `app/app.vue`
+  - `app/assets/css/main.css`
+  - `app/assets/css/qwen.css`
+  - `app/components/LangSwitcher.vue`
+  - `app/components/ProfileAvatar.vue`
+  - `app/components/SectionMarker.vue`
+  - `app/components/StatCell.vue`
+  - `app/components/TheGrain.vue`
+  - `app/components/TheMarquee.vue`
+  - `app/components/ThemeSwitcher.vue`
+  - `app/composables/useCountUp.ts`
+  - `app/composables/useDateRange.ts`
+  - `app/layouts/default.vue`
+  - `app/pages/about.vue`
+  - `app/pages/blog/[slug]/index.vue`
+  - `app/pages/blog/index.vue`
+  - `app/pages/contact.vue`
+  - `app/pages/index.vue`
+  - `app/utils/revealObserver.ts`
+  - `bun.lock`
+  - `content.config.ts`
+  - `content/blog/arquitectura-hexagonal-con-nuxt-4.md`
+  - `content/blog/bienvenido-a-mi-blog.md`
+  - `content/blog/deployment-de-nuxt-4-en-produccion.md`
+  - `content/blog/testing-con-vitest-en-nuxt-4.md`
+  - `content/projects/TODO-caso-de-estudio.md`
+  - `content/resume/ca.json`
+  - `content/resume/en.json`
+  - `content/resume/es.json`
+  - `content/services/TODO-contenido-y-marca.md`
+  - `content/services/TODO-ia-y-automatizacion.md`
+  - `content/services/TODO-seo-y-crecimiento.md`
+  - `content/services/TODO-web-y-ecommerce.md`
+  - `content/testimonials/TODO-testimonio.json`
+  - `data/site.ts`
+  - `eslint.config.mjs`
+  - `i18n/locales/ca.json`
+  - `i18n/locales/en.json`
+  - `i18n/locales/es.json`
+  - `nuxt.config.ts`
+  - `package.json`
+  - `public/Senseikatana Brand Palette - v2.0.0.pdf`
+  - `public/Senseikatana Paleta Brand Colors - v1.0.0.pdf`
+  - `public/cv/sergio-jurado.jpg`
+  - `public/cv/sergio-jurado.pdf`
+  - `public/img/avatar-192.avif`
+  - `public/img/avatar-192.webp`
+  - `public/img/avatar-384.avif`
+  - `public/img/avatar-384.webp`
+  - `public/img/avatar-768.avif`
+  - `public/img/avatar-768.webp`
+  - `public/img/avatar-96.avif`
+  - `public/img/avatar-96.webp`
+  - `scripts/generate-avatars.ts`
+  - `server/plugins/00-remove-powered-by.ts`
+  - `server/routes/contact/call.get.ts`
+  - `server/routes/contact/whatsapp.get.ts`
+  - `tests/content.test.ts`
+  - `tests/dateRange.test.ts`
+  - `tsconfig.json`
+  - `vitest.config.ts`
+
