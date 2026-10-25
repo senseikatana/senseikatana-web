@@ -16,9 +16,10 @@ export default defineContentConfig({
         draft: z.boolean().default(false),
       }),
     }),
+
     /*
-     * Services — the daathdesign-style "what I do" grid. Markdown body is the
-     * long-form pitch; frontmatter drives the card and the ordering.
+     * Services — the "what I do" grid. Markdown body is the long-form pitch;
+     * frontmatter drives the card, the ordering and the detail page.
      */
     services: defineCollection({
       type: 'page',
@@ -30,17 +31,18 @@ export default defineContentConfig({
         order: z.number().default(99),
         featured: z.boolean().default(false),
         draft: z.boolean().default(false),
+        stack: z.array(z.string()).optional(),
+        deliverables: z.array(z.string()).optional(),
       }),
     }),
 
     /*
-     * Projects / case studies — separate from blog because these sell work,
-     * not ideas. `challenge` + `solution` + `outcome` are the three-beat
-     * structure from the reference site.
+     * Works / case studies — separate from blog because these sell work,
+     * not ideas. `challenge` + `solution` + `outcome` are the three beats.
      */
-    projects: defineCollection({
+    works: defineCollection({
       type: 'page',
-      source: 'projects/**',
+      source: 'works/**',
       schema: z.object({
         title: z.string(),
         description: z.string(),
@@ -80,63 +82,6 @@ export default defineContentConfig({
         rating: z.number().min(1).max(5).optional(),
         link: z.string().url().optional(),
         order: z.number().default(99),
-      }),
-    }),
-
-    resume: defineCollection({
-      type: 'data',
-      source: 'resume/**',
-      schema: z.object({
-        lang: z.string(),
-        name: z.string(),
-        title: z.string(),
-        summary: z.string(),
-        /*
-          Deliberately ABSENT: `email` and `phone`.
-
-          They are private runtime config (see nuxt.config.ts). Keeping them
-          here would put them in `_payload.json`, which the browser downloads
-          unasked — hiding the `mailto:` in a template would not help.
-        */
-        location: z.string(),
-        linkedin: z.string(),
-        pdfUrl: z.string(),
-        /**
-         * Datos de salud (RGPD art. 9) — NUNCA se publican en la web.
-         * El texto público (`certificationOnRequest`) es la única versión
-         * que se renderiza; el detalle va solo en el PDF descargable.
-         */
-        certificationOnRequest: z.string().optional(),
-        experience: z.array(z.object({
-          company: z.string(),
-          role: z.string(),
-          /*
-           * Partial-precision dates, because most entries are only known to
-           * the year. Accepts 'YYYY', 'YYYY-MM' or 'YYYY-MM-DD'; inventing
-           * the missing precision would be fabricating data.
-           *
-           * `end: null` means ongoing and renders as "actualidad" /
-           * "actualitat" / "present" — see app/composables/useDateRange.ts.
-           */
-          start: z.string().regex(/^\d{4}(-\d{2}(-\d{2})?)?$/, 'start debe ser YYYY, YYYY-MM o YYYY-MM-DD'),
-          end: z.string().regex(/^\d{4}(-\d{2}(-\d{2})?)?$/, 'end debe ser YYYY, YYYY-MM o YYYY-MM-DD').nullable(),
-          description: z.string(),
-          highlights: z.array(z.string()),
-        })),
-        education: z.array(z.object({
-          institution: z.string(),
-          degree: z.string(),
-          start: z.string().regex(/^\d{4}(-\d{2}(-\d{2})?)?$/, 'start debe ser YYYY, YYYY-MM o YYYY-MM-DD'),
-          end: z.string().regex(/^\d{4}(-\d{2}(-\d{2})?)?$/, 'end debe ser YYYY, YYYY-MM o YYYY-MM-DD').nullable(),
-          note: z.string().optional(),
-        })),
-        softSkills: z.array(z.string()),
-        hardSkills: z.array(z.string()),
-        languages: z.array(z.object({
-          name: z.string(),
-          level: z.string(),
-        })),
-        additional: z.array(z.string()),
       }),
     }),
   },

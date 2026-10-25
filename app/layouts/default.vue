@@ -6,6 +6,8 @@ const localePath = useLocalePath()
 
 const navigation = computed(() => [
   { label: t('nav.home'), to: localePath('/') },
+  { label: t('nav.services'), to: localePath('/services') },
+  { label: t('nav.works'), to: localePath('/works') },
   { label: t('nav.about'), to: localePath('/about') },
   { label: t('nav.blog'), to: localePath('/blog') },
   { label: t('nav.contact'), to: localePath('/contact') },
@@ -13,8 +15,8 @@ const navigation = computed(() => [
 
 const socials = [
   { icon: 'i-simple-icons-linkedin', to: site.linkedin, label: 'LinkedIn' },
+  { icon: 'i-simple-icons-github', to: site.github, label: 'GitHub' },
   { icon: 'i-simple-icons-whatsapp', to: '/contact/whatsapp', label: 'WhatsApp' },
-  { icon: 'i-lucide-phone', to: '/contact/call', label: 'Teléfono' },
 ]
 
 const NAV_UI = {
@@ -84,7 +86,7 @@ onMounted(() => {
           class="hidden sm:inline-flex"
         />
         <UButton
-          :to="localePath('/about')"
+          :to="localePath('/contact')"
           class="q-btn q-btn-primary q-btn-sm max-sm:hidden! font-heading uppercase tracking-[0.2em]"
         >
           {{ t('nav.cta') }}
@@ -129,15 +131,15 @@ onMounted(() => {
             color="gray"
             variant="ghost"
             :to="s.to"
-            target="_blank"
-            rel="noopener noreferrer"
+            :target="s.to.startsWith('http') ? '_blank' : undefined"
+            :rel="s.to.startsWith('http') ? 'noopener noreferrer' : undefined"
             :aria-label="s.label"
             class="q-footer-social"
           />
         </div>
 
         <div class="mt-8 flex flex-col items-center gap-3 border-t border-dark-700/60 pt-6 font-mono text-[11px] uppercase tracking-[0.15em] text-white-500 sm:flex-row sm:justify-between">
-          <span>&copy; {{ new Date().getFullYear() }} {{ site.name }}</span>
+          <span>&copy; {{ new Date().getFullYear() }} {{ site.name }}. {{ t('footer.rights') }}</span>
           <span>{{ site.location }}</span>
         </div>
       </UContainer>

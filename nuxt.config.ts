@@ -54,6 +54,12 @@ export default defineNuxtConfig({
     '/es/resume/**': { redirect: '/about' },
     '/ca/resume/**': { redirect: '/ca/about' },
     '/en/resume/**': { redirect: '/en/about' },
+    '/servicios': { redirect: '/services' },
+    '/ca/servicios': { redirect: '/ca/services' },
+    '/en/servicios': { redirect: '/en/services' },
+    '/proyectos': { redirect: '/works' },
+    '/ca/proyectos': { redirect: '/ca/works' },
+    '/en/proyectos': { redirect: '/en/works' },
   },
 
   /*
@@ -111,7 +117,7 @@ export default defineNuxtConfig({
   /*
     Contact details are PRIVATE runtime config on purpose.
 
-    They must never live in `content/resume/*` — @nuxt/content serialises the
+    They must never live in `content/*` — @nuxt/content serialises the
     whole collection into `_payload.json`, which ships to the browser unasked.
     Hiding a `mailto:` in the template does NOT hide it; the payload leaks it.
 
@@ -130,13 +136,13 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'Sergio Jurado Casado — CV',
+      title: 'Sergio Jurado — Software para operaciones',
       htmlAttrs: {
         lang: 'es',
         dir: 'ltr',
       },
       meta: [
-        { name: 'description', content: 'CV digital de Sergio Jurado Casado: logística, almacén, comercio y atención al cliente. Cambrils, Tarragona.' },
+        { name: 'description', content: 'Desarrollo software a medida para almacén, logística, retail y back-office: aplicaciones web, paneles internos e integraciones. Cambrils, Tarragona.' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       ],
       link: [

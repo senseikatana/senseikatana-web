@@ -1,29 +1,44 @@
 import { describe, it, expect } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const CONTENT_DIR = join(process.cwd(), 'content')
-const COLLECTIONS = ['blog', 'resume', 'services', 'projects', 'testimonials'] as const
+const COLLECTIONS = ['blog', 'services', 'works', 'testimonials'] as const
+
+function filesIn(collection: string): string[] {
+  return readdirSync(join(CONTENT_DIR, collection)).filter(file => !file.startsWith('.'))
+}
+
+function markdownFilesIn(collection: string): string[] {
+  return filesIn(collection).filter(file => file.endsWith('.md'))
+}
 
 function frontmatterOf(path: string): string {
   return readFileSync(path, 'utf8').split('---')[1] ?? ''
 }
 
+function bodyOf(path: string): string {
+  return readFileSync(path, 'utf8').split('---').slice(2).join('---')
+}
+
 describe('Content collections', () => {
   it.each(COLLECTIONS)('collection %s/ exists and is not empty', (collection) => {
-    const files = readdirSync(join(CONTENT_DIR, collection)).filter(f => !f.startsWith('.'))
+    const files = filesIn(collection)
 
     expect(files.length, `content/${collection}/ está vacía`).toBeGreaterThan(0)
   })
 
+  it('the resume collection is gone', () => {
+    expect(existsSync(join(CONTENT_DIR, 'resume')), 'content/resume/ sigue existiendo').toBe(false)
+  })
+
   it('every blog post declares the frontmatter the schema requires', () => {
-    const dir = join(CONTENT_DIR, 'blog')
-    const posts = readdirSync(dir).filter(f => f.endsWith('.md'))
+    const posts = markdownFilesIn('blog')
 
     expect(posts.length).toBeGreaterThan(0)
 
     for (const post of posts) {
-      const fm = frontmatterOf(join(dir, post))
+      const fm = frontmatterOf(join(CONTENT_DIR, 'blog', post))
 
       expect(fm, `${post}: sin title`).toContain('title:')
       expect(fm, `${post}: sin description`).toContain('description:')
@@ -31,28 +46,62 @@ describe('Content collections', () => {
     }
   })
 
-  it('placeholder services and projects stay draft until real content replaces them', () => {
-    for (const collection of ['services', 'projects'] as const) {
-      const dir = join(CONTENT_DIR, collection)
-      const files = readdirSync(dir).filter(f => f.startsWith('TODO') && f.endsWith('.md'))
+  it('every service is publishable: title, description, order and a non-empty body', () => {
+    const services = markdownFilesIn('services')
 
-      expect(files.length, `sin placeholders en ${collection}/`).toBeGreaterThan(0)
+    expect(services.length).toBeGreaterThan(0)
 
-      for (const file of files) {
-        expect(frontmatterOf(join(dir, file)), `${file}: un TODO debe seguir en draft: true`)
-          .toContain('draft: true')
+    for (const service of services) {
+      const path = join(CONTENT_DIR, 'services', service)
+      const fm = frontmatterOf(path)
+
+      expect(fm, `${service}: sin title`).toContain('title:')
+      expect(fm, `${service}: sin description`).toContain('description:')
+      expect(fm, `${service}: sin order`).toContain('order:')
+      expect(fm, `${service}: sigue en draft`).toContain('draft: false')
+      expect(bodyOf(path).trim().length, `${service}: cuerpo vacío`).toBeGreaterThan(100)
+    }
+  })
+
+  it('every work declares the three beats and a valid link', () => {
+    const works = markdownFilesIn('works')
+
+    expect(works.length).toBeGreaterThan(0)
+
+    for (const work of works) {
+      const path = join(CONTENT_DIR, 'works', work)
+      const fm = frontmatterOf(path)
+
+      expect(fm, `${work}: sin title`).toContain('title:')
+      expect(fm, `${work}: sin description`).toContain('description:')
+      expect(fm, `${work}: sin challenge`).toContain('challenge:')
+      expect(fm, `${work}: sin solution`).toContain('solution:')
+      expect(fm, `${work}: sin outcome`).toContain('outcome:')
+      expect(fm, `${work}: sigue en draft`).toContain('draft: false')
+
+      const links = fm.match(/^(\w+Url):\s*"([^"]+)"/gm) ?? []
+
+      for (const line of links) {
+        expect(line, `${work}: URL inválida → ${line}`).toMatch(/^(\w+Url):\s*"https:\/\/[^"]+"$/)
       }
     }
   })
 
+  it('no TODO placeholder files survive in the published collections', () => {
+    for (const collection of ['services', 'works'] as const) {
+      const placeholders = filesIn(collection).filter(file => file.startsWith('TODO'))
+
+      expect(placeholders, `${collection}/ todavía tiene placeholders`).toEqual([])
+    }
+  })
+
   it('testimonials require provenance so no quote floats free of its source', () => {
-    const dir = join(CONTENT_DIR, 'testimonials')
-    const files = readdirSync(dir).filter(f => f.endsWith('.json'))
+    const files = filesIn('testimonials').filter(file => file.endsWith('.json'))
 
     expect(files.length).toBeGreaterThan(0)
 
     for (const file of files) {
-      const entry = JSON.parse(readFileSync(join(dir, file), 'utf8'))
+      const entry = JSON.parse(readFileSync(join(CONTENT_DIR, 'testimonials', file), 'utf8'))
 
       expect(entry.source, `${file}: falta source`).toBeTruthy()
       expect(entry.quote, `${file}: falta quote`).toBeTruthy()
@@ -61,112 +110,19 @@ describe('Content collections', () => {
   })
 
   /*
-    RGPD art. 9 — special-category data must never reach the public collection.
-
-    Health data (disability certification) belongs in the downloadable PDF,
-    requested privately. If someone re-adds it to the root `note`, this fails.
-
-    NOTE: only the ROOT `note` is forbidden. `education[].note` is a legitimate
-    field ("Carretillas y Ventas") and is untouched.
+    Contact details must never be published in the content layer.
+    @nuxt/content serialises collections into `_payload.json`, which ships to
+    the browser unasked. Keeping email/phone out of the source is the only
+    reliable way to keep them out of the payload.
   */
-  it('no special-category health data is published in the resume collection', () => {
-    const dir = join(CONTENT_DIR, 'resume')
-    const files = readdirSync(dir).filter(f => f.endsWith('.json'))
+  it('no contact details leak into the content collections', () => {
+    for (const collection of COLLECTIONS) {
+      for (const file of filesIn(collection)) {
+        const raw = readFileSync(join(CONTENT_DIR, collection, file), 'utf8')
 
-    /*
-      Bare `TEA`/`ASD` MUST be word-bounded: as plain substrings they match
-      innocent words — "TEA" hits "teams", "ASD" would hit any acronym soup.
-      Only the spelled-out disability terms may match as substrings.
-    */
-    const FORBIDDEN: RegExp[] = [
-      /discapac|discap|disabil|disabilitat|autis/i,
-      /\bTEA\b/,
-      /\bASD\b/,
-    ]
-
-    expect(files.length).toBeGreaterThan(0)
-
-    for (const file of files) {
-      const raw = readFileSync(join(dir, file), 'utf8')
-      const resume = JSON.parse(raw)
-
-      // 1. The root `note` field (the health data carrier) must be gone.
-      expect(
-        'note' in resume,
-        `${file}: el "note" raíz no debe existir — es el campo que llevaba el dato de salud`,
-      ).toBe(false)
-
-      // 2. Every language must declare the neutral, non-identifying line.
-      expect(
-        resume.certificationOnRequest,
-        `${file}: falta certificationOnRequest en ${file}`,
-      ).toBeTruthy()
-
-      // 3. No forbidden term may appear anywhere except that neutral line.
-      const neutralLine = raw.split('\n').find(l => l.includes('certificationOnRequest')) ?? ''
-
-      for (const line of raw.split('\n')) {
-        if (line === neutralLine) continue
-
-        for (const term of FORBIDDEN) {
-          expect(
-            line,
-            `${file}: término de dato de salud fuera de certificationOnRequest → "${line.trim()}"`,
-          ).not.toMatch(term)
-        }
+        expect(raw, `${collection}/${file}: contiene un email`).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/)
+        expect(raw.replace(/\D/g, ''), `${collection}/${file}: contiene el teléfono`).not.toContain('637723747')
       }
     }
-  })
-
-  /*
-    Contact details must never appear in the published collection.
-
-    Not in the source JSON, and — critically — not in the schema either. If
-    `email`/`phone` were declared, @nuxt/content would serialise them into
-    `_payload.json`, which the browser downloads unasked. A `mailto:` removed
-    from a template does NOT stop that leak.
-  */
-  it('no contact details are declared in the resume collection', () => {
-    const dir = join(CONTENT_DIR, 'resume')
-    const files = readdirSync(dir).filter(f => f.endsWith('.json'))
-
-    expect(files.length).toBeGreaterThan(0)
-
-    for (const file of files) {
-      const raw = readFileSync(join(dir, file), 'utf8')
-      const resume = JSON.parse(raw)
-
-      expect('email' in resume, `${file}: "email" no debe existir — va en runtimeConfig`).toBe(false)
-      expect('phone' in resume, `${file}: "phone" no debe existir — va en runtimeConfig`).toBe(false)
-
-      // The literal address and digits must not be in the content source.
-      expect(raw, `${file}: contiene el email literal`).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/)
-      expect(raw.replace(/\D/g, ''), `${file}: contiene dígitos de teléfono`).not.toContain('637723747')
-    }
-  })
-
-  /*
-    Schema-level guard.
-
-    Read as source rather than imported: `defineCollection` needs the Nuxt
-    module runtime to resolve Zod, so `import('../content.config')` throws
-    outside a build. A static check on the resume block is what actually
-    protects the payload, and it runs anywhere.
-  */
-  it('the resume schema does not declare contact or health fields', () => {
-    const source = readFileSync(
-      join(process.cwd(), 'content.config.ts'),
-      'utf8',
-    )
-
-    // Isolate the resume collection block.
-    const start = source.indexOf("source: 'resume/**'")
-    expect(start, 'no se encontró la collection resume en content.config.ts').toBeGreaterThan(-1)
-
-    const block = source.slice(start, source.indexOf('})', start))
-
-    expect(block, 'el schema no debe declarar "email"').not.toMatch(/^\s*email:\s*z\./m)
-    expect(block, 'el schema no debe declarar "phone"').not.toMatch(/^\s*phone:\s*z\./m)
-    expect(block, 'el schema no debe declarar "note" (dato de salud)').not.toMatch(/^\s*note:\s*z\./m)
   })
 })

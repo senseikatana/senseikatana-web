@@ -1,221 +1,64 @@
 <script setup lang="ts">
-import { site } from '~~/data/site'
-
-const { locale, t } = useI18n()
+const { locale, t, tm } = useI18n()
 const localePath = useLocalePath()
-const { formatRange } = useDateRange()
 
-const { data } = await useAsyncData(`home-${locale.value}`, () =>
-  queryCollection('resume').where('lang', '=', locale.value).first(),
+const { data: services } = await useAsyncData(`home-services-${locale.value}`, () =>
+  queryCollection('services')
+    .where('draft', '=', false)
+    .order('order', 'ASC')
+    .all(),
+)
+
+const { data: works } = await useAsyncData(`home-works-${locale.value}`, () =>
+  queryCollection('works')
+    .where('draft', '=', false)
+    .order('order', 'ASC')
+    .limit(3)
+    .all(),
 )
 
 const { data: posts } = await useAsyncData(`home-blog-${locale.value}`, () =>
   queryCollection('blog')
     .where('published', '=', true)
     .order('date', 'DESC')
+    .limit(3)
     .all(),
 )
 
-interface ResumeExperience {
-  company: string
-  role: string
-  description: string
-  start: string
-  end: string | null
-}
-
-interface ResumeEducation {
-  institution: string
-  degree: string
-  note?: string
-  start: string
-  end: string | null
-}
-
-interface Resume {
-  name: string
-  title: string
-  summary: string
-  location: string
-  linkedin: string
-  pdfUrl: string
-  experience: ResumeExperience[]
-  education: ResumeEducation[]
-  hardSkills: string[]
-  languages: { name: string; level: string }[]
-}
-
-interface BlogPost {
-  id: string
-  title: string
-  description?: string
-  date: string
-  path: string
-}
-
-const resume = computed(() => data.value as Resume | null)
-const featuredPosts = computed(() => (posts.value as BlogPost[] | null)?.slice(0, 6) ?? [])
-
-/** Años transcurridos desde la experiencia más antigua. */
-const yearsOfExperience = computed(() => {
-  const starts = resume.value?.experience.map(item => Number(item.start)) ?? []
-  if (starts.length === 0) return 0
-  return new Date().getFullYear() - Math.min(...starts)
-})
-
-/** Métricas reales derivadas del CV — nada de cifras inventadas. */
-const stats = computed(() => [
-  { value: yearsOfExperience.value, label: t('home.stats.years'), accent: true },
-  { value: resume.value?.experience.length ?? 0, label: t('home.stats.roles') },
-  { value: resume.value?.hardSkills.length ?? 0, label: t('home.stats.hardSkills') },
-  { value: resume.value?.languages.length ?? 0, label: t('home.stats.languages') },
-])
-
-const socials = [
-  { icon: 'i-simple-icons-linkedin', to: site.linkedin, label: 'LinkedIn' },
-]
-
-const marquee = computed(() => t('brand.marquee') as unknown as string[])
-
-const skillIcons = ['i-lucide-package', 'i-lucide-monitor', 'i-lucide-truck', 'i-lucide-sprout']
-
-/* ── Trayectoria: experiencia + formación + idiomas en un grid filtrable ── */
-type WorkKind = 'exp' | 'edu' | 'lang'
-
-interface WorkCard {
-  id: string
-  kind: WorkKind
-  title: string
-  subtitle: string
-  description: string
-  meta: string
-}
-
-const KIND_ICONS: Record<WorkKind, string> = {
-  exp: 'i-lucide-briefcase',
-  edu: 'i-lucide-graduation-cap',
-  lang: 'i-lucide-languages',
-}
-
-const workCards = computed<WorkCard[]>(() => {
-  const r = resume.value
-  if (!r) return []
-
-  const experience = r.experience.map((item, index) => ({
-    id: `exp-${index}`,
-    kind: 'exp' as const,
-    title: item.role,
-    subtitle: item.company,
-    description: item.description,
-    meta: formatRange({ start: item.start, end: item.end }),
-  }))
-
-  const education = r.education.map((item, index) => ({
-    id: `edu-${index}`,
-    kind: 'edu' as const,
-    title: item.degree,
-    subtitle: item.institution,
-    description: item.note ?? '',
-    meta: formatRange({ start: item.start, end: item.end }),
-  }))
-
-  const languages = r.languages.map((item, index) => ({
-    id: `lang-${index}`,
-    kind: 'lang' as const,
-    title: item.name,
-    subtitle: t('about.languages'),
-    description: item.level,
-    meta: '',
-  }))
-
-  return [...experience, ...education, ...languages]
-})
-
-const workFilter = ref<'all' | WorkKind>('all')
-const workSearch = ref('')
-const workVisible = ref(12)
-
-const workFilters = computed(() => [
-  { key: 'all' as const, label: t('home.filterAll') },
-  { key: 'exp' as const, label: t('about.sections.experiencia') },
-  { key: 'edu' as const, label: t('about.sections.formacion') },
-  { key: 'lang' as const, label: t('about.languages') },
-])
-
-const filteredWork = computed(() => {
-  const query = workSearch.value.trim().toLowerCase()
-  return workCards.value.filter((card) => {
-    if (workFilter.value !== 'all' && card.kind !== workFilter.value) return false
-    if (!query) return true
-    return `${card.title} ${card.subtitle} ${card.description}`.toLowerCase().includes(query)
-  })
-})
-
-const visibleWork = computed(() => filteredWork.value.slice(0, workVisible.value))
-
-function setWorkFilter(key: 'all' | WorkKind) {
-  workFilter.value = key
-  workVisible.value = 12
-}
-
-function onWorkSearch(event: Event) {
-  workSearch.value = (event.target as HTMLInputElement).value
-  workVisible.value = 12
-}
-
-function showMoreWork() {
-  workVisible.value += 12
-}
-
-/* ── Contacto ── */
-const contactLinks = computed(() => {
-  const r = resume.value
-  if (!r) return []
-  return [
-    { icon: 'i-simple-icons-linkedin', label: 'LinkedIn', value: 'linkedin.com/in/senseijurado', href: r.linkedin, external: true, download: false },
-    { icon: 'i-simple-icons-whatsapp', label: t('contact.whatsappAction'), value: t('contact.subtitle'), href: '/contact/whatsapp', external: false, download: false },
-    { icon: 'i-lucide-phone', label: t('contact.callAction'), value: t('home.phoneValue'), href: '/contact/call', external: false, download: false },
-    { icon: 'i-lucide-download', label: t('contact.pdf'), value: r.pdfUrl, href: r.pdfUrl, external: false, download: true },
-  ]
-})
+const marquee = computed(() => tm('brand.marquee') as string[])
 
 useSeoMeta({
-  title: () => (resume.value ? `${resume.value.name} — ${resume.value.title}` : 'CV'),
-  description: () => resume.value?.summary,
+  title: () => t('nav.home'),
+  description: () => t('home.intro'),
 })
 </script>
 
 <template>
-  <div v-if="resume">
-    <!-- ── Héroe (maqueta qwen) ──────────────────────────────────────────── -->
-    <section class="relative overflow-hidden pb-28 pt-32">
+  <div>
+    <!-- ── Héroe ─────────────────────────────────────────────────────────── -->
+    <section class="relative overflow-hidden pb-24 pt-28">
       <div class="q-hero-grid" />
       <div
         class="glow-accent absolute inset-0"
-        style="--glow-at: 75% 30%"
+        style="--glow-at: 72% 28%"
       />
       <div class="scanline absolute inset-0 opacity-60" />
 
-      <div class="relative mx-auto grid max-w-6xl items-center gap-12 px-6 lg:grid-cols-2">
+      <div class="relative mx-auto grid max-w-6xl items-center gap-12 px-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div class="reveal">
           <p class="q-greeting mb-6">
             <span class="q-dot" />
             {{ t('home.greeting') }}
           </p>
 
-          <h1 class="mb-4 text-[clamp(2.5rem,6vw,4.25rem)] leading-[1.05] tracking-tight">
-            {{ t('home.hello') }}
-            <span class="q-gradient-text">{{ resume.name }}</span>
-          </h1>
-
-          <h2 class="mb-5 font-display text-[clamp(1.75rem,4vw,3rem)] uppercase leading-[0.95] tracking-wide">
+          <h1 class="mb-5 font-display text-[clamp(2.75rem,7vw,5.5rem)] uppercase leading-[0.9] tracking-wide">
             <span class="headline-line"><span>{{ t('home.headline.1') }}</span></span>
             <span class="headline-line"><span class="text-outline-dim">{{ t('home.headline.2') }}</span></span>
             <span class="headline-line"><span>{{ t('home.headline.3') }}<span class="text-forge-500">.</span></span></span>
-          </h2>
+          </h1>
 
-          <p class="mb-7 max-w-xl text-lg text-white-400">
-            {{ resume.title }}
+          <p class="mb-7 max-w-xl text-lg leading-relaxed text-white-400">
+            {{ t('home.intro') }}
           </p>
 
           <div class="mb-9 flex flex-wrap gap-2.5">
@@ -230,22 +73,11 @@ useSeoMeta({
 
           <div class="flex flex-wrap gap-4">
             <NuxtLink
-              :to="localePath('/about')"
+              :to="localePath('/services')"
               class="q-btn q-btn-primary"
             >
-              {{ t('home.ctaCv') }}
+              {{ t('home.ctaServices') }}
             </NuxtLink>
-            <a
-              :href="resume.pdfUrl"
-              download
-              class="q-btn q-btn-outline"
-            >
-              <UIcon
-                name="i-lucide-download"
-                class="size-4"
-              />
-              {{ t('home.ctaPdf') }}
-            </a>
             <NuxtLink
               :to="localePath('/contact')"
               class="q-btn q-btn-outline"
@@ -253,26 +85,10 @@ useSeoMeta({
               {{ t('home.ctaContact') }}
             </NuxtLink>
           </div>
-
-          <div class="mt-8 flex gap-3">
-            <UButton
-              v-for="s in socials"
-              :key="s.icon"
-              :icon="s.icon"
-              color="gray"
-              variant="ghost"
-              size="sm"
-              :to="s.to"
-              target="_blank"
-              rel="noopener noreferrer"
-              :aria-label="s.label"
-              class="text-white-400 hover:text-forge-500"
-            />
-          </div>
         </div>
 
         <div
-          class="reveal relative mx-auto w-full max-w-[420px]"
+          class="reveal relative mx-auto w-full max-w-[380px]"
           style="--reveal-delay: 0.15s"
         >
           <div class="q-photo w-full">
@@ -288,27 +104,27 @@ useSeoMeta({
 
           <div class="q-badge q-badge-1">
             <UIcon
-              name="i-lucide-package"
+              name="i-lucide-layers"
               class="size-6 text-forge-500"
             />
             <div>
               <div class="q-badge-label">
-                {{ t('home.badgeProfile') }}
+                {{ t('about.stackTitle') }}
               </div>
-              {{ resume.title }}
+              Nuxt · Astro · Next
             </div>
           </div>
 
           <div class="q-badge q-badge-2">
             <UIcon
-              name="i-lucide-circle-check"
+              name="i-lucide-git-branch"
               class="size-6 text-forge-500"
             />
             <div>
               <div class="q-badge-label">
-                {{ t('resume.availability') }}
+                Open source
               </div>
-              {{ t('home.badgeAvailable') }}
+              KatanaKit
             </div>
           </div>
         </div>
@@ -319,25 +135,124 @@ useSeoMeta({
       </div>
     </section>
 
-    <!-- ── Métricas ─────────────────────────────────────────────────────── -->
-    <section class="relative overflow-hidden border-y border-dark-700/60 bg-dark-900">
-      <UContainer class="py-14 lg:py-16">
-        <div class="reveal-stagger grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
-          <StatCell
-            v-for="stat in stats"
-            :key="stat.label"
-            :value="stat.value"
-            :label="stat.label"
-            :accent="stat.accent"
-          />
+    <!-- ── Servicios ────────────────────────────────────────────────────── -->
+    <section class="border-t border-dark-700/60 py-20 lg:py-24">
+      <UContainer>
+        <div class="mb-12 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div class="reveal">
+            <SectionMarker :label="t('services.eyebrow')" />
+            <h2 class="q-section-title q-left">
+              {{ t('home.servicesTitle') }}
+            </h2>
+            <p class="q-section-subtitle q-left">
+              {{ t('home.servicesSubtitle') }}
+            </p>
+          </div>
+          <NuxtLink
+            :to="localePath('/services')"
+            class="q-btn q-btn-outline shrink-0"
+          >
+            {{ t('home.servicesAll') }}
+          </NuxtLink>
+        </div>
+
+        <div class="reveal-stagger grid gap-5 md:grid-cols-2">
+          <NuxtLink
+            v-for="service in services"
+            :key="service.path"
+            :to="localePath(service.path)"
+            class="card-forge group flex flex-col p-6 transition-colors hover:border-forge-500/60"
+          >
+            <div class="mb-5 flex items-start justify-between gap-4">
+              <span class="grid size-11 place-items-center border border-forge-500/30 bg-forge-500/5 text-forge-500">
+                <UIcon
+                  :name="service.icon || 'i-lucide-box'"
+                  class="size-5"
+                />
+              </span>
+              <span class="font-mono text-[11px] uppercase tracking-[0.2em] text-white-500">
+                0{{ service.order }}
+              </span>
+            </div>
+            <h3 class="mb-3 font-display text-2xl uppercase tracking-wide text-white-50 transition-colors group-hover:text-forge-500">
+              {{ service.title }}
+            </h3>
+            <p class="flex-1 text-sm leading-relaxed text-white-400">
+              {{ service.description }}
+            </p>
+            <span class="mt-5 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-forge-500">
+              {{ t('works.view') }}
+              <UIcon
+                name="i-lucide-arrow-right"
+                class="size-3.5"
+              />
+            </span>
+          </NuxtLink>
+        </div>
+      </UContainer>
+    </section>
+
+    <!-- ── Works ────────────────────────────────────────────────────────── -->
+    <section class="border-t border-dark-700/50 py-20 lg:py-24">
+      <UContainer>
+        <div class="mb-12 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div class="reveal">
+            <SectionMarker :label="t('works.eyebrow')" />
+            <h2 class="q-section-title q-left">
+              {{ t('home.worksTitle') }}
+            </h2>
+            <p class="q-section-subtitle q-left">
+              {{ t('home.worksSubtitle') }}
+            </p>
+          </div>
+          <NuxtLink
+            :to="localePath('/works')"
+            class="q-btn q-btn-outline shrink-0"
+          >
+            {{ t('home.worksAll') }}
+          </NuxtLink>
+        </div>
+
+        <div class="reveal-stagger grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <article
+            v-for="work in works"
+            :key="work.path"
+            class="q-project-card"
+          >
+            <div class="q-thumb q-thumb-icon">
+              <UIcon
+                name="i-lucide-folder-kanban"
+                class="size-12"
+              />
+            </div>
+            <div class="q-info">
+              <div class="q-cat">
+                {{ work.sector }}
+              </div>
+              <h3>{{ work.title }}</h3>
+              <p class="q-desc">
+                {{ work.description }}
+              </p>
+              <div class="q-meta">
+                <span>{{ work.year }}</span>
+                <NuxtLink
+                  :to="localePath(work.path)"
+                  class="q-view-btn"
+                  :aria-label="`${t('works.view')}: ${work.title}`"
+                >
+                  →
+                </NuxtLink>
+              </div>
+            </div>
+          </article>
         </div>
       </UContainer>
     </section>
 
     <!-- ── Sobre mí ─────────────────────────────────────────────────────── -->
-    <section class="py-20 lg:py-24">
+    <section class="border-t border-dark-700/50 py-20 lg:py-24">
       <UContainer>
-        <div class="grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+        <div class="grid items-center gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
           <div class="reveal justify-self-center lg:justify-self-start">
             <div class="q-photo w-full max-w-sm">
               <div class="q-photo-inner aspect-4/5">
@@ -355,55 +270,51 @@ useSeoMeta({
             class="reveal"
             style="--reveal-delay: 0.1s"
           >
+            <SectionMarker :label="t('about.eyebrow')" />
             <h2 class="q-section-title q-left q-gradient-text">
-              {{ t('nav.about') }}
+              {{ t('home.aboutTitle') }}
             </h2>
-
-            <p class="mb-4 text-base leading-relaxed text-white-400 md:text-lg">
-              {{ resume.summary }}
+            <p class="mb-8 max-w-xl text-base leading-relaxed text-white-400 md:text-lg">
+              {{ t('home.aboutBody') }}
             </p>
-
-            <h3 class="mb-4 mt-8 font-heading text-sm uppercase tracking-[0.2em] text-forge-500">
-              {{ t('home.hardSkillsTitle') }}
-            </h3>
-
-            <p class="mb-5 text-sm leading-relaxed text-white-400">
-              {{ t('home.skillsBody') }}
-            </p>
-
-            <div class="q-learning-grid">
-              <div
-                v-for="(skill, index) in resume.hardSkills"
-                :key="skill"
-                class="q-learning-item"
-              >
-                <span class="q-icon">
-                  <UIcon :name="skillIcons[index % skillIcons.length]" />
-                </span>
-                {{ skill }}
-              </div>
-            </div>
+            <NuxtLink
+              :to="localePath('/about')"
+              class="q-btn q-btn-outline"
+            >
+              {{ t('home.aboutCta') }}
+            </NuxtLink>
           </div>
         </div>
       </UContainer>
     </section>
 
-    <!-- ── Blog destacado ───────────────────────────────────────────────── -->
+    <!-- ── Blog ─────────────────────────────────────────────────────────── -->
     <section
-      v-if="featuredPosts.length"
+      v-if="posts?.length"
       class="border-t border-dark-700/50 py-20 lg:py-24"
     >
       <UContainer>
-        <h2 class="q-section-title reveal">
-          {{ t('blog.title') }}
-        </h2>
-        <p class="q-section-subtitle reveal">
-          {{ t('blog.subtitle') }}
-        </p>
+        <div class="mb-12 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div class="reveal">
+            <SectionMarker :label="t('blog.eyebrow')" />
+            <h2 class="q-section-title q-left">
+              {{ t('home.blogTitle') }}
+            </h2>
+            <p class="q-section-subtitle q-left">
+              {{ t('home.blogSubtitle') }}
+            </p>
+          </div>
+          <NuxtLink
+            :to="localePath('/blog')"
+            class="q-btn q-btn-outline shrink-0"
+          >
+            {{ t('home.blogAll') }}
+          </NuxtLink>
+        </div>
 
         <div class="reveal-stagger grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <NuxtLink
-            v-for="post in featuredPosts"
+            v-for="post in posts"
             :key="post.id"
             :to="localePath(post.path)"
             class="q-featured-card"
@@ -427,176 +338,22 @@ useSeoMeta({
       </UContainer>
     </section>
 
-    <!-- ── Mi trayectoria (buscador + filtros) ──────────────────────────── -->
+    <!-- ── CTA ──────────────────────────────────────────────────────────── -->
     <section class="border-t border-dark-700/50 py-20 lg:py-24">
       <UContainer>
-        <h2 class="q-section-title reveal">
-          {{ t('home.workTitle') }}
-        </h2>
-        <p class="q-section-subtitle reveal">
-          {{ t('home.workSubtitle') }}
-        </p>
-
-        <div class="reveal">
-          <div class="q-search">
-            <UIcon
-              name="i-lucide-search"
-              class="q-search-icon size-4"
-            />
-            <input
-              type="text"
-              :placeholder="t('home.searchPlaceholder')"
-              :aria-label="t('home.searchPlaceholder')"
-              :value="workSearch"
-              @input="onWorkSearch"
-            >
-          </div>
-        </div>
-
-        <div class="reveal q-filters">
-          <button
-            v-for="f in workFilters"
-            :key="f.key"
-            type="button"
-            class="q-filter-btn"
-            :class="{ 'q-active': workFilter === f.key }"
-            @click="setWorkFilter(f.key)"
+        <div class="bracket-frame reveal border border-dark-700 bg-dark-900/40 p-8 text-center md:p-12">
+          <h2 class="mb-4 font-display text-4xl uppercase tracking-wide md:text-6xl">
+            {{ t('home.ctaTitle') }}
+          </h2>
+          <p class="mx-auto mb-8 max-w-2xl text-white-400">
+            {{ t('home.ctaBody') }}
+          </p>
+          <NuxtLink
+            :to="localePath('/contact')"
+            class="q-btn q-btn-primary"
           >
-            {{ f.label }}
-          </button>
-        </div>
-
-        <div
-          v-if="filteredWork.length"
-          class="reveal-stagger grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          <article
-            v-for="card in visibleWork"
-            :key="card.id"
-            class="q-project-card"
-          >
-            <div class="q-thumb q-thumb-icon">
-              <UIcon
-                :name="KIND_ICONS[card.kind]"
-                class="size-12"
-              />
-            </div>
-            <div class="q-info">
-              <div class="q-cat">
-                {{ card.subtitle }}
-              </div>
-              <h3>{{ card.title }}</h3>
-              <p
-                v-if="card.description"
-                class="q-desc"
-              >
-                {{ card.description }}
-              </p>
-              <div class="q-meta">
-                <span>{{ card.meta }}</span>
-                <NuxtLink
-                  :to="localePath('/about')"
-                  class="q-view-btn"
-                  :aria-label="t('nav.about')"
-                >
-                  →
-                </NuxtLink>
-              </div>
-            </div>
-          </article>
-        </div>
-
-        <p
-          v-else
-          class="py-10 text-center text-white-400"
-        >
-          {{ t('home.workEmpty') }}
-        </p>
-
-        <div
-          v-if="filteredWork.length > workVisible"
-          class="mt-12 text-center"
-        >
-          <button
-            type="button"
-            class="q-btn q-btn-outline"
-            @click="showMoreWork"
-          >
-            {{ t('home.loadMore') }}
-          </button>
-        </div>
-      </UContainer>
-    </section>
-
-    <!-- ── Contacto ─────────────────────────────────────────────────────── -->
-    <section class="border-t border-dark-700/50 py-20 lg:py-24">
-      <UContainer>
-        <div class="grid gap-10 lg:grid-cols-2 lg:gap-16">
-          <div class="reveal">
-            <h2 class="q-section-title q-left q-gradient-text">
-              {{ t('home.contactTitle') }}
-            </h2>
-            <p class="mb-8 max-w-xl text-white-400">
-              {{ t('contact.intro') }}
-            </p>
-
-            <div class="flex flex-col gap-4">
-              <a
-                v-for="link in contactLinks"
-                :key="link.label"
-                :href="link.href"
-                :target="link.external ? '_blank' : undefined"
-                :rel="link.external ? 'noopener noreferrer' : undefined"
-                :download="link.download ? '' : undefined"
-                class="q-contact-link"
-              >
-                <span class="q-contact-icon">
-                  <UIcon
-                    :name="link.icon"
-                    class="size-5"
-                  />
-                </span>
-                <span>
-                  <span class="q-contact-label block">{{ link.label }}</span>
-                  <span class="q-contact-value">{{ link.value }}</span>
-                </span>
-              </a>
-            </div>
-          </div>
-
-          <div
-            class="reveal"
-            style="--reveal-delay: 0.1s"
-          >
-            <div class="h-full rounded-3xl border border-dark-700/60 bg-dark-900/60 p-8 md:p-10">
-              <h3 class="mb-3 font-display text-3xl uppercase tracking-wide">
-                {{ t('home.availabilityTitle') }}
-              </h3>
-              <p class="mb-8 text-white-400">
-                {{ t('home.availabilitySubtitle') }}
-              </p>
-
-              <div class="flex flex-col gap-4 sm:flex-row">
-                <NuxtLink
-                  :to="localePath('/contact')"
-                  class="q-btn q-btn-primary justify-center"
-                >
-                  {{ t('home.ctaContact') }}
-                </NuxtLink>
-                <a
-                  :href="resume.pdfUrl"
-                  download
-                  class="q-btn q-btn-outline justify-center"
-                >
-                  <UIcon
-                    name="i-lucide-download"
-                    class="size-4"
-                  />
-                  {{ t('home.ctaPdf') }}
-                </a>
-              </div>
-            </div>
-          </div>
+            {{ t('home.ctaButton') }}
+          </NuxtLink>
         </div>
       </UContainer>
     </section>
